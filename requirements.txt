@@ -1,0 +1,8 @@
+# Minimal deps for Streamlit Community Cloud (no Jupyter)
+pandas==3.0.2
+numpy==2.4.4
+scikit-learn==1.8.0
+joblib==1.5.3
+pygad==3.6.0
+streamlit>=1.32.0,<2
+plotly>=5.18.0,<7
