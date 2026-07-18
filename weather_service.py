@@ -194,14 +194,54 @@ def get_weather_for_optimization(
     place_label: str = DEFAULT_PLACE,
     city: str | None = None,
     reference_date: date | None = None,
+    manual_features: dict[str, float] | None = None,
 ) -> WeatherContext:
     """
     mode:
       - 'api' — live Open-Meteo forecast/archive window
       - 'csv' — historical plant weather CSV used in the modelling pipeline
       - 'scenario' — fixed meteorological scenario (15 °C / 0 mm / 60 %)
+      - 'manual' — user-entered lag features (T_amb−1, P_sum−2, H_avg−5)
     """
     from ga_core import SCENARIO_WEATHER
+
+    if mode == "manual":
+        if not manual_features:
+            raise ValueError("manual_features required for mode='manual'")
+        required = (
+            "temperatura_srednia_C_lag_1",
+            "opad_suma_mm_lag_2",
+            "wilgotnosc_srednia_pct_lag_5",
+        )
+        features = {k: float(manual_features[k]) for k in required}
+        ref = reference_date or date.today()
+        details = {
+            "temperatura_srednia_C_lag_1": {
+                "base": "temperatura_srednia_C",
+                "lag": 1,
+                "source_date": "manual entry",
+            },
+            "opad_suma_mm_lag_2": {
+                "base": "opad_suma_mm",
+                "lag": 2,
+                "source_date": "manual entry",
+            },
+            "wilgotnosc_srednia_pct_lag_5": {
+                "base": "wilgotnosc_srednia_pct",
+                "lag": 5,
+                "source_date": "manual entry",
+            },
+        }
+        return WeatherContext(
+            source="Manual entry",
+            place_label="user-specified lag values",
+            latitude=float("nan"),
+            longitude=float("nan"),
+            reference_date=ref,
+            daily=pd.DataFrame(),
+            features=features,
+            details=details,
+        )
 
     if mode == "scenario":
         ref = reference_date or date.today()

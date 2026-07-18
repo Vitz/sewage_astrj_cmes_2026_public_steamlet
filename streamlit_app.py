@@ -181,12 +181,14 @@ def step_weather():
         "Weather source",
         [
             "Open-Meteo API (live)",
+            "Manual entry (lag features)",
             "Historical plant CSV (weather_daily_api.csv)",
             "Fixed scenario (15 °C / 0 mm / 60 %)",
         ],
     )
     mode_map = {
         "Open-Meteo API (live)": "api",
+        "Manual entry (lag features)": "manual",
         "Historical plant CSV (weather_daily_api.csv)": "csv",
         "Fixed scenario (15 °C / 0 mm / 60 %)": "scenario",
     }
@@ -195,6 +197,7 @@ def step_weather():
     city = None
     lat, lon = DEFAULT_LAT, DEFAULT_LON
     place = DEFAULT_PLACE
+    manual_features = None
 
     if mode == "api":
         loc_mode = st.selectbox(
@@ -209,6 +212,39 @@ def step_weather():
             lon = c2.number_input("Longitude", value=DEFAULT_LON, format="%.4f")
             place = f"lat={lat:.4f}, lon={lon:.4f}"
 
+    if mode == "manual":
+        st.caption(
+            "Enter the three lagged covariates expected by the RF model "
+            "(same units as in training)."
+        )
+        c1, c2, c3 = st.columns(3)
+        t_lag1 = c1.number_input(
+            "T_amb, lag 1 d [°C]",
+            value=15.0,
+            step=0.1,
+            format="%.1f",
+        )
+        p_lag2 = c2.number_input(
+            "P_sum, lag 2 d [mm]",
+            value=0.0,
+            min_value=0.0,
+            step=0.1,
+            format="%.1f",
+        )
+        h_lag5 = c3.number_input(
+            "H_avg, lag 5 d [%]",
+            value=60.0,
+            min_value=0.0,
+            max_value=100.0,
+            step=0.1,
+            format="%.1f",
+        )
+        manual_features = {
+            "temperatura_srednia_C_lag_1": float(t_lag1),
+            "opad_suma_mm_lag_2": float(p_lag2),
+            "wilgotnosc_srednia_pct_lag_5": float(h_lag5),
+        }
+
     ref = None
     if mode == "csv":
         ref = st.date_input(
@@ -218,8 +254,9 @@ def step_weather():
             max_value=date(2024, 12, 31),
         )
 
-    if st.button("Load weather", type="primary"):
-        with st.spinner("Fetching meteorological data..."):
+    btn_label = "Apply weather" if mode == "manual" else "Load weather"
+    if st.button(btn_label, type="primary"):
+        with st.spinner("Preparing meteorological boundary conditions..."):
             ctx = get_weather_for_optimization(
                 mode=mode,
                 latitude=lat,
@@ -227,6 +264,7 @@ def step_weather():
                 place_label=place,
                 city=city,
                 reference_date=ref,
+                manual_features=manual_features,
             )
             st.session_state.weather_ctx = ctx
 
