@@ -322,10 +322,6 @@ def step_bounds():
         hide_index=True,
         use_container_width=True,
     )
-    st.caption(
-        "Source columns: Objetość WKF A–D [m³] in `wyniki WKF-2024-v3.csv`. "
-        "Encoding matches `encoder_komory.joblib` (A=0 … D=3)."
-    )
 
     df = bounds_table(ctx.features)
     show = df.drop(columns=["_key"]).copy()
