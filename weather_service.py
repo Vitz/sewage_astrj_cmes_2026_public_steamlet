@@ -198,7 +198,8 @@ def get_weather_for_optimization(
 ) -> WeatherContext:
     """
     mode:
-      - 'api' — live Open-Meteo forecast/archive window
+      - 'api_today' — Open-Meteo for today with study-selected lags (recommended)
+      - 'api' — live Open-Meteo (custom location / day)
       - 'csv' — historical plant weather CSV used in the modelling pipeline
       - 'scenario' — fixed meteorological scenario (15 °C / 0 mm / 60 %)
       - 'manual' — user-entered lag features (T_amb−1, P_sum−2, H_avg−5)
@@ -288,6 +289,10 @@ def get_weather_for_optimization(
             details=details,
         )
 
+    is_today = mode == "api_today"
+    if is_today:
+        reference_date = date.today()
+
     lat, lon, label = latitude, longitude, place_label
     if city:
         lat, lon, label = geocode_city(city)
@@ -295,8 +300,15 @@ def get_weather_for_optimization(
     try:
         daily = fetch_open_meteo_daily(lat, lon, past_days=14, forecast_days=1)
         features, details, ref = compute_lag_features(daily, reference_date)
+        if is_today:
+            source = (
+                "Open-Meteo API — optimal for today (recommended). "
+                "Uses study-selected lags: T_amb−1 d, P_sum−2 d, H_avg−5 d."
+            )
+        else:
+            source = "Open-Meteo Forecast API"
         return WeatherContext(
-            source="Open-Meteo Forecast API",
+            source=source,
             place_label=label,
             latitude=lat,
             longitude=lon,
@@ -308,8 +320,13 @@ def get_weather_for_optimization(
     except (URLError, HTTPError, TimeoutError, ValueError, KeyError) as exc:
         daily = load_fallback_csv()
         features, details, ref = compute_lag_features(daily, reference_date)
+        prefix = (
+            "Optimal for today (recommended) — fallback CSV"
+            if is_today
+            else f"Fallback CSV ({FALLBACK_CSV.name})"
+        )
         return WeatherContext(
-            source=f"Fallback CSV ({FALLBACK_CSV.name}) — API unavailable: {exc}",
+            source=f"{prefix} — API unavailable: {exc}",
             place_label="Plant site (pipeline weather archive)",
             latitude=lat,
             longitude=lon,

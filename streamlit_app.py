@@ -180,14 +180,17 @@ def step_weather():
     mode_label = st.radio(
         "Weather source",
         [
-            "Open-Meteo API (live)",
+            "Optimal for today (recommended)",
+            "Open-Meteo API (custom)",
             "Manual entry (lag features)",
             "Historical plant CSV (weather_daily_api.csv)",
             "Fixed scenario (15 °C / 0 mm / 60 %)",
         ],
+        index=0,
     )
     mode_map = {
-        "Open-Meteo API (live)": "api",
+        "Optimal for today (recommended)": "api_today",
+        "Open-Meteo API (custom)": "api",
         "Manual entry (lag features)": "manual",
         "Historical plant CSV (weather_daily_api.csv)": "csv",
         "Fixed scenario (15 °C / 0 mm / 60 %)": "scenario",
@@ -199,17 +202,38 @@ def step_weather():
     place = DEFAULT_PLACE
     manual_features = None
 
+    if mode == "api_today":
+        st.info(
+            "Recommended operational path: fetch live Open-Meteo data for **today** and "
+            "build the lag vector proven in the study — "
+            "**T_amb (lag 1 d)**, **P_sum (lag 2 d)**, **H_avg (lag 5 d)** — "
+            "as exogenous boundary conditions for GA."
+        )
+        loc_mode = st.selectbox(
+            "Location",
+            ["Warsaw (default)", "Other city (Poland)", "Manual coordinates"],
+            key="loc_today",
+        )
+        if loc_mode == "Other city (Poland)":
+            city = st.text_input("City", value="Krakow", key="city_today")
+        elif loc_mode == "Manual coordinates":
+            c1, c2 = st.columns(2)
+            lat = c1.number_input("Latitude", value=DEFAULT_LAT, format="%.4f", key="lat_today")
+            lon = c2.number_input("Longitude", value=DEFAULT_LON, format="%.4f", key="lon_today")
+            place = f"lat={lat:.4f}, lon={lon:.4f}"
+
     if mode == "api":
         loc_mode = st.selectbox(
             "Location",
             ["Warsaw (default)", "Other city (Poland)", "Manual coordinates"],
+            key="loc_api",
         )
         if loc_mode == "Other city (Poland)":
-            city = st.text_input("City", value="Krakow")
+            city = st.text_input("City", value="Krakow", key="city_api")
         elif loc_mode == "Manual coordinates":
             c1, c2 = st.columns(2)
-            lat = c1.number_input("Latitude", value=DEFAULT_LAT, format="%.4f")
-            lon = c2.number_input("Longitude", value=DEFAULT_LON, format="%.4f")
+            lat = c1.number_input("Latitude", value=DEFAULT_LAT, format="%.4f", key="lat_api")
+            lon = c2.number_input("Longitude", value=DEFAULT_LON, format="%.4f", key="lon_api")
             place = f"lat={lat:.4f}, lon={lon:.4f}"
 
     if mode == "manual":
